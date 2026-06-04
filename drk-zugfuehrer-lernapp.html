@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>DRK Zugführer Lernapp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #F4F1ED; font-family: sans-serif; min-height: 100vh; padding: 24px 16px 48px; color: #1A1A1A; }
+    button { cursor: pointer; }
+    button:focus-visible { outline: 2px solid #C0392B; outline-offset: 2px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes popIn { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes slideUp { 0% { transform: translateY(14px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+
+    /* ── Layout ── */
+    .screen { animation: slideUp 0.35s ease; }
+    .center { max-width: 720px; margin: 0 auto; }
+    .center-sm { max-width: 640px; margin: 0 auto; }
+    .center-md { max-width: 600px; margin: 0 auto; }
+
+    /* ── Cards ── */
+    .card { background: #fff; border-radius: 16px; border: 1px solid #E0D9D0; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .card-alt { background: #F9F7F4; border-radius: 12px; border: 1px solid #E0D9D0; padding: 16px 18px; margin-bottom: 14px; }
+    .card-goal { border-radius: 12px; padding: 16px 18px; }
+
+    /* ── Typography ── */
+    .font-bc { font-family: 'Barlow Condensed', sans-serif; }
+    .font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── XP Bar ── */
+    #xp-bar-wrap { display: flex; align-items: center; gap: 12px; }
+    #xp-level { background: #C0392B; color: #fff; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
+    #xp-track { flex: 1; height: 8px; background: #E0D9D0; border-radius: 4px; overflow: hidden; }
+    #xp-fill { height: 100%; background: linear-gradient(90deg, #C0392B, #E74C3C); border-radius: 4px; transition: width .6s ease; }
+    #xp-label { font-size: 12px; color: #7A7A7A; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
+
+    /* ── Module Grid ── */
+    #module-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .mod-card { background: #fff; border: 2px solid #E0D9D0; border-radius: 14px; padding: 18px 16px; text-align: left; transition: all .18s; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,.06); width: 100%; }
+    .mod-card:hover { background: #F9F7F4; box-shadow: 0 4px 16px rgba(0,0,0,.10); transform: translateY(-2px); }
+    .mod-icon { font-size: 26px; margin-bottom: 8px; }
+    .mod-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 17px; color: #1A1A1A; margin-bottom: 3px; }
+    .mod-sub { font-size: 11px; color: #7A7A7A; font-family: 'IBM Plex Mono', monospace; margin-bottom: 12px; }
+    .mod-badge { position: absolute; top: 10px; right: 10px; background: #E8F5EE; color: #1D6A45; border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+    .mod-progress-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; font-family: 'IBM Plex Mono', monospace; }
+    .mod-bar-track { height: 5px; background: #E0D9D0; border-radius: 3px; }
+    .mod-bar-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+    .mod-empty { font-size: 11px; color: #C8BFB4; font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── Quiz ── */
+    .quiz-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .btn-back { background: #fff; border: 1px solid #E0D9D0; border-radius: 8px; color: #4A4A4A; padding: 7px 14px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    .quiz-title { flex: 1; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 20px; color: #1A1A1A; }
+    .quiz-score { display: flex; gap: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+    .score-ok { color: #1D6A45; font-weight: 700; }
+    .score-err { color: #C0392B; font-weight: 700; }
+    .diff-badge { border-radius: 6px; padding: 4px 10px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; font-weight: 700; display: inline-block; margin-bottom: 14px; }
+    .q-card { background: #fff; border-radius: 14px; padding: 22px 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.07); border-width: 2px; border-style: solid; }
+    .q-text { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 600; color: #1A1A1A; line-height: 1.45; }
+    .options { display: flex; flex-direction: column; gap: 9px; margin-bottom: 20px; }
+    .opt-btn { border-width: 2px; border-style: solid; border-radius: 10px; padding: 13px 16px; text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 13px; transition: all .15s; display: flex; align-items: flex-start; gap: 12px; line-height: 1.5; width: 100%; }
+    .opt-label { width: 24px; height: 24px; border-radius: 50%; border-width: 2px; border-style: solid; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 800; margin-top: 1px; }
+    .btn-submit { width: 100%; padding: 15px; border: none; border-radius: 10px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 1px; transition: all .2s; }
+    .btn-next { width: 100%; padding: 15px; border: none; border-radius: 10px; color: #fff; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 1px; cursor: pointer; }
+    .xp-pop { text-align: center; margin-bottom: 12px; font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 15px; color: #B45309; animation: popIn .4s ease; }
+    .explain-label { font-size: 11px; color: #7A7A7A; font-family: 'IBM Plex Mono', monospace; margin-bottom: 8px; font-weight: 700; }
+    .explain-text { color: #4A4A4A; font-size: 14px; line-height: 1.7; font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── Stats ── */
+    .stats-header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+    .stats-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 26px; color: #1A1A1A; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .stat-box { border: 1px solid #E0D9D0; border-radius: 12px; padding: 16px 12px; text-align: center; }
+    .stat-icon { font-size: 24px; margin-bottom: 6px; }
+    .stat-val { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 28px; }
+    .stat-lbl { font-size: 10px; color: #7A7A7A; font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
+    .mod-stat-row { background: #fff; border: 1px solid #E0D9D0; border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; }
+    .mod-stat-top { display: flex; justify-content: space-between; margin-bottom: 7px; }
+    .mod-stat-name { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 15px; color: #1A1A1A; }
+    .mod-stat-pct { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 700; }
+    .mod-stat-bar { height: 6px; background: #E0D9D0; border-radius: 3px; }
+    .mod-stat-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+
+    /* ── Misc ── */
+    .streak-badge { color: #fff; border-radius: 20px; padding: 4px 12px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; font-weight: 700; }
+    .btn-stats { background: #F9F7F4; border: 1px solid #E0D9D0; border-radius: 8px; color: #4A4A4A; padding: 7px 14px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; }
+    .daily-box { background: #FDECEA; border: 1px solid #E8C5C0; border-radius: 12px; padding: 13px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; }
+    .daily-icon { font-size: 26px; }
+    .daily-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; color: #C0392B; }
+    .daily-sub { font-size: 12px; color: #4A4A4A; margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+    .section-label { font-size: 10px; color: #7A7A7A; font-family: 'IBM Plex Mono', monospace; letter-spacing: 2px; font-weight: 700; margin-bottom: 12px; }
+    .footer { margin-top: 32px; font-size: 10px; color: #7A7A7A; text-align: center; font-family: 'IBM Plex Mono', monospace; }
+    .goal-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #7A7A7A; margin-bottom: 6px; }
+    .goal-text { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; }
+    .overall-pct { margin-top: 12px; font-size: 12px; font-family: 'IBM Plex Mono', monospace; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// DATEN
+// ══════════════════════════════════════════════════════════════
+const STORAGE_KEY = "drk_zugfuehrer_v3";
+
+const MODULES = [
+  { id:"fuehrungsvorgang", title:"Führungsvorgang",      subtitle:"DV 100 · Führungskreislauf",      icon:"⚙️", accent:"#C0392B" },
+  { id:"einsatzbefehl",   title:"Einsatzbefehl",        subtitle:"FERN-Schema · Befehlsarten",      icon:"📋", accent:"#1E4D8C" },
+  { id:"taktik",          title:"Taktik & Einheiten",   subtitle:"SEG · EE · Führungsebenen",       icon:"🗂️", accent:"#1A5276" },
+  { id:"lagekarte",       title:"Lagekarte & ETB",      subtitle:"DV 102 · Taktische Zeichen",      icon:"🗺️", accent:"#6C3483" },
+  { id:"manv",            title:"MANV & Sichtung",      subtitle:"Sichtungskategorien · BHP",       icon:"🏥", accent:"#1D6A45" },
+  { id:"recht",           title:"Recht & Organisation", subtitle:"Rechtsgrundlagen · DRK-Struktur", icon:"⚖️", accent:"#7D6608" },
+  { id:"funk",            title:"Funk & Kommunikation", subtitle:"BOS-Funk · Digitalfunk TETRA",    icon:"📻", accent:"#784212" },
+  { id:"sanitaet",        title:"Sanitätsdienst",       subtitle:"DV 400 · Medizinische Leitung",   icon:"🩺", accent:"#1F618D" },
+];
+
+const QB = {
+  fuehrungsvorgang: [
+    { frage:"In welcher Reihenfolge laufen die Phasen des Führungsvorgangs nach DV 100 ab?", optionen:["Befehl → Erkundung → Entschluss → Kontrolle","Erkundung → Beurteilung → Entschluss → Befehl → Kontrolle","Planung → Befehl → Rückmeldung → Analyse","Lagebeurteilung → Planung → Durchführung → Bewertung"], richtig:1, erklaerung:"Der Führungsvorgang nach DV 100 ist zyklisch: Erkundung → Beurteilung → Entschluss → Befehl → Kontrolle. Danach beginnt der Kreislauf erneut.", schwierigkeit:"leicht" },
+    { frage:"Was ist die Aufgabe der 'Beurteilung der Lage'?", optionen:["Den Befehl schriftlich festhalten","Auftrag, eigene Kräfte, Schadenslage und Handlungsoptionen analysieren","Die Einsatzkräfte einweisen","Den Einsatz beenden und dokumentieren"], richtig:1, erklaerung:"In der Beurteilungsphase analysiert die Führungskraft: Auftrag, eigene Lage (Kräfte, Mittel, Zeit), Schadenslage und Handlungsoptionen. Daraus leitet sie den Entschluss ab.", schwierigkeit:"leicht" },
+    { frage:"Dürfen Führungsebenen nach DV 100 übersprungen werden?", optionen:["Ja, immer erlaubt","Grundsätzlich nein — nur in Ausnahmefällen mit unverzüglicher Nachricht","Ja, bei mehr als 3 Verletzten","Nur der Einsatzleiter darf das entscheiden"], richtig:1, erklaerung:"Führungsebenen dürfen grundsätzlich NICHT übersprungen werden. In eilbedürftigen Ausnahmefällen ist es möglich, jedoch muss die übersprungene Stelle unverzüglich informiert werden.", schwierigkeit:"mittel" },
+    { frage:"Was bedeutet 'Kontrolle' im Führungsvorgang nach DV 100?", optionen:["Fahrzeugüberprüfung vor dem Einsatz","Qualitätsprüfung des Materials","Laufende Überprüfung ob Befehle verstanden, weitergegeben und ausgeführt werden","Personalüberprüfung der Mannschaft"], richtig:2, erklaerung:"Kontrolle: ständiges Überprüfen ob Befehle richtig verstanden, weitergegeben und umgesetzt werden. Sie liefert Informationen für den nächsten Führungszyklus.", schwierigkeit:"mittel" },
+    { frage:"Auf welcher Führungsebene agiert der Zugführer nach DV 100?", optionen:["Truppebene","Gruppenebene","Zugebene","Verbandsebene"], richtig:2, erklaerung:"Der Zugführer agiert auf der Zugebene (Führungsstufe B). Er führt mehrere Gruppen, in der Regel abgesetzt vom direkten Einsatzort.", schwierigkeit:"leicht" },
+    { frage:"Wie viele taktische Einheiten sollen einer Führungsebene maximal unterstellt sein?", optionen:["Maximal 2","Maximal 3–5","Maximal 8","Unbegrenzt"], richtig:1, erklaerung:"Nach DV 100 sollen einer Führungsebene nicht mehr als 3 bis 5 taktische Teileinheiten unterstellt sein, um eine effektive Führungsspanne zu gewährleisten.", schwierigkeit:"mittel" },
+    { frage:"Was versteht man unter dem 'Entschluss' im Führungsvorgang?", optionen:["Der unterzeichnete Einsatzbefehl","Die Entscheidung der Führungskraft wie der Auftrag erfüllt werden soll","Der Beschluss des Kreisbereitschaftsleiters","Die Zusammenfassung des Einsatzberichts"], richtig:1, erklaerung:"Der Entschluss ist die zentrale Entscheidung, mit welchen Mitteln und auf welchem Weg der Auftrag erfüllt wird. Er ist Grundlage für die Befehlsausgabe.", schwierigkeit:"leicht" },
+    { frage:"Was versteht man unter 'abgesetzter Führung' auf Zugebene?", optionen:["Der Zugführer befindet sich direkt bei den Verletzten","Der Zugführer führt von einem rückwärtigen Führungsstandort, nicht vom Schadensort","Die Führung erfolgt ausschließlich per Funk","Der Zugführer übergibt die Führung an den Gruppenführer"], richtig:1, erklaerung:"Abgesetzte Führung: der Zugführer führt von einem Standort (z.B. KdoW) aus — nicht direkt am Schadensort. So behält er Übersicht und kann ruhig beurteilen.", schwierigkeit:"mittel" },
+  ],
+  einsatzbefehl: [
+    { frage:"Wofür steht das Kürzel FERN im DRK-Einsatzbefehl?", optionen:["Führung – Erkundung – Rückmeldung – Nachalarmierung","Fakten – Einheiten – Ressourcen – Normen","Feuer – Einsatz – Rettung – Nothilfe","Führungskraft – Ergebnis – Regelung – Notfall"], richtig:0, erklaerung:"FERN: F=Führung (Führungsstelle, Funk), E=Erkundung (Lage, Auftrag), R=Rückmeldung (Kommunikationswege), N=Nachalarmierung. Das Schema strukturiert die Befehlsausgabe auf Zugführerebene.", schwierigkeit:"leicht" },
+    { frage:"Was enthält der Befehlspunkt 'Führung' im FERN-Schema?", optionen:["Sanitätsplan und Medikamentenliste","Standort der Führungsstelle und Funkkanal","Liste aller eingesetzten Fahrzeuge","Ablaufplan der medizinischen Maßnahmen"], richtig:1, erklaerung:"Unter 'Führung' werden Standort der Führungsstelle (KdoW, ELW), Verbindungsmittel und Funkkanal festgelegt. Damit weiß jede Einheit, wo und wie sie melden soll.", schwierigkeit:"mittel" },
+    { frage:"Welche Befehlsart lässt dem Unterführer den größten Handlungsspielraum?", optionen:["Einzelbefehl","Auftragsbefehl (Auftragstaktik)","Grundbefehl","Sofortbefehl"], richtig:1, erklaerung:"Der Auftragsbefehl beschreibt das Ziel, überlässt aber dem Unterführer die Wahl der Mittel. Er fördert Eigenverantwortung und ist bei unübersichtlicher Lage besonders geeignet.", schwierigkeit:"mittel" },
+    { frage:"Was beschreibt der Befehlspunkt 'Erkundung' im FERN-Schema?", optionen:["Welche Einheiten nachalarmiert werden sollen","Die aktuelle Schadenslage und den erhaltenen Auftrag","Die Funkdisziplin im Einsatz","Die Personalstärke der eingesetzten Gruppen"], richtig:1, erklaerung:"Unter 'Erkundung' wird die aktuelle Lage (Schadensumfang, Gefahren, Patientenzahlen) und der erhaltene Auftrag beschrieben — die Lagebeschreibung für unterstellte Gruppenführer.", schwierigkeit:"mittel" },
+    { frage:"Wie soll ein Befehl nach DV 100 formuliert sein?", optionen:["So ausführlich wie möglich mit allen Details","Kurz und klar – enthält nur was Unterführer zur Auftragserfüllung wissen müssen","Immer schriftlich und vom Zugführer unterschrieben","Standardisiert nach festem Wortlaut ohne Abweichungen"], richtig:1, erklaerung:"Nach DV 100 soll ein Befehl kurz, klar und präzise sein — alles, aber auch nur das, was die nachgeordneten Führungskräfte wissen müssen.", schwierigkeit:"leicht" },
+    { frage:"Was ist der Unterschied zwischen Einzel- und Gruppenbefehl?", optionen:["Beim Einzelbefehl handelt es sich um einen mündlichen Befehl","Einzelbefehl an eine Einheit, Gruppenbefehl gleichzeitig an alle","Gruppenbefehl ist immer schriftlich","Es gibt keinen Unterschied"], richtig:1, erklaerung:"Der Einzelbefehl richtet sich an eine Einheit mit individuellen Aufgaben. Der Gruppenbefehl wird gleichzeitig an alle unterstellten Einheiten erteilt.", schwierigkeit:"schwer" },
+    { frage:"Welche Information gehört in den Befehlspunkt 'Nachalarmierung'?", optionen:["Einsatzende und Abzugsreihenfolge","Regelungen zur Anforderung von Verstärkung oder Spezialkräften","Personalausweis-Nummern der Eingesetzten","Materialbestand nach dem Einsatz"], richtig:1, erklaerung:"Unter 'Nachalarmierung' werden Regelungen getroffen, wie zusätzliche Kräfte oder Spezialmittel angefordert werden können (weitere SEGs, LNA, OrgL, etc.).", schwierigkeit:"mittel" },
+    { frage:"Was versteht man unter 'Befehlsgebung in der Kürze'?", optionen:["Befehle werden nur per SMS erteilt","Nur der wichtigste Satz wird mitgeteilt","Befehle ohne Umschweife erteilt — effizient und präzise","Befehle müssen kürzer als 30 Sekunden sein"], richtig:2, erklaerung:"Befehlsgebung in der Kürze: klare, unmissverständliche Formulierung ohne unnötige Füllwörter. In Stresssituationen ist ein präziser Befehl effektiver als langer Erklärungstext.", schwierigkeit:"leicht" },
+  ],
+  taktik: [
+    { frage:"Wie viele Personen umfasst eine DRK-Einsatzeinheit (ohne TeSi) in BW?", optionen:["15 Personen","20 Personen","28 Personen","40 Personen"], richtig:2, erklaerung:"Eine DRK-EE ohne TeSi hat in BW eine Stärke von 3/2/23/28 inkl. 7 KFZ. Sie besteht aus Führungstrupp, SEG-Sanität, SEG-Transport und SEG-Betreuung.", schwierigkeit:"mittel" },
+    { frage:"Welche Aufgabe hat der Führungstrupp der DRK-Einsatzeinheit?", optionen:["Selbständige Patientenversorgung","Koordination der SEGs und Verbindungshalten zur übergeordneten Einsatzleitung","Aufbau des Behandlungsplatzes","Technische Unterstützung und Materiallogistik"], richtig:1, erklaerung:"Der Führungstrupp (ZFü, stv. ZFü, Zugarzt, GrFü, FüHe) koordiniert die unterstellten SEGs und hält Verbindung zur TEL bzw. übergeordneten Führungsstelle.", schwierigkeit:"leicht" },
+    { frage:"Wie viele Verletzte kann eine SEG-Sanität im Regelfall versorgen?", optionen:["5","10","20","50"], richtig:2, erklaerung:"Eine SEG-Sanität kann i.d.R. 20 Verletzte selbstständig erstversorgen. Bei größeren Lagen arbeitet sie im Verbund mehrerer SEGs am Behandlungsplatz.", schwierigkeit:"leicht" },
+    { frage:"Aus welchen Komponenten besteht eine SEG-Transport?", optionen:["2 RTW und 8 Helfer","4 Helfer und 2 KTW (KTW-B oder KTW-4)","1 NAW und 4 Helfer","6 Helfer und 1 GW-San"], richtig:1, erklaerung:"Die SEG-Transport besteht aus 4 Helfern und 2 KTW. Ihre Aufgabe: Verstärkung des Rettungsdienstes und Patiententransport beim MANV.", schwierigkeit:"mittel" },
+    { frage:"Was ist eine SEG (Schnelleinsatzgruppe)?", optionen:["Eine ständig besetzte Einsatzzentrale","Eine kleine, schnell einsetzbare Einheit unterhalb der Einsatzeinheit","Ein Spezialtransportfahrzeug","Eine Spezialeinheit für Großschadenlagen"], richtig:1, erklaerung:"Eine SEG ist eine kleine, schnell alarmierbare taktische Einheit. Sie kann als Teil der EE oder selbstständig eingesetzt werden.", schwierigkeit:"leicht" },
+    { frage:"Wer trägt die Gesamtverantwortung für die Sicherheit der Helfer im Zug?", optionen:["Der Gruppenführer","Der Zugarzt","Der Zugführer","Der Kreisbereitschaftsleiter"], richtig:2, erklaerung:"Der Zugführer ist für die Sicherheit aller Helfer seines Zuges verantwortlich. Er muss Gefahren erkennen, Schutzmaßnahmen einleiten und die Sicherheit laufend im Blick behalten.", schwierigkeit:"mittel" },
+    { frage:"Was ist der Unterschied zwischen Einsatzeinheit (EE) und SEG?", optionen:["Es gibt keinen Unterschied","EE ist größer und umfasst mehrere SEGs plus Führungstrupp","SEG ist die ältere Bezeichnung für EE","EE wird nur im Katastrophenfall eingesetzt"], richtig:1, erklaerung:"Die EE ist die übergeordnete Einheit und umfasst mehrere SEGs plus Führungstrupp. Eine SEG kann auch eigenständig eingesetzt werden.", schwierigkeit:"leicht" },
+    { frage:"Für welchen Einsatz ist eine SEG-Betreuung vorgesehen?", optionen:["Medizinische Erstversorgung Schwerverletzter","Betreuung und Versorgung unverletzter Betroffener (z.B. Evakuierte, Angehörige)","Transport von Intensivpatienten","Dekontamination von Verletzten"], richtig:1, erklaerung:"Die SEG-Betreuung kümmert sich um psychische Unterstützung und Grundversorgung (Unterkunft, Verpflegung) von unverletzten oder leicht betroffenen Personen.", schwierigkeit:"mittel" },
+  ],
+  lagekarte: [
+    { frage:"Welche DRK-Dienstvorschrift regelt taktische Zeichen?", optionen:["DV 100","DV 400","DV 102","DV 600"], richtig:2, erklaerung:"Die DRK-DV 102 regelt die taktischen Zeichen für die einheitliche Lagedarstellung und ermöglicht organisationsübergreifende Verständigung auf der Lagekarte.", schwierigkeit:"leicht" },
+    { frage:"Wofür steht ETB im Einsatz?", optionen:["Einsatz-Transfer-Befehl","Einsatz-Tagebuch","Einzel-Trupp-Bericht","Einsatz-Taktik-Bogen"], richtig:1, erklaerung:"ETB = Einsatz-Tagebuch. Es dokumentiert chronologisch alle relevanten Ereignisse, Befehle, Meldungen und Entscheidungen — das zentrale Dokument der Einsatzdokumentation.", schwierigkeit:"leicht" },
+    { frage:"Was sind Pflichtangaben auf einer Lagekarte?", optionen:["Nur Fahrzeugpositionen","Datum, Uhrzeit, Maßstab und Nordpfeil","Personalstärke aller Einheiten und Fahrzeugkennzeichen","Nur Schadensorte und Patientenzahlen"], richtig:1, erklaerung:"Pflichtangaben: Datum, Uhrzeit der Erstellung, Maßstab und Nordpfeil. Nur so kann die Lagekarte von anderen Führungskräften korrekt interpretiert werden.", schwierigkeit:"mittel" },
+    { frage:"Was ist der Zweck einer Lagemeldung?", optionen:["Abschluss des Einsatzes dokumentieren","Übergeordneten Führungsstellen aktuelle Informationen über Lage und Maßnahmen übermitteln","Materialverbrauch melden","Personalstärken statistisch erfassen"], richtig:1, erklaerung:"Die Lagemeldung informiert die übergeordnete Führungsstelle über Schadenslage, eigene Maßnahmen, Ressourcenbedarf und besondere Vorkommnisse.", schwierigkeit:"leicht" },
+    { frage:"Welche Form hat eine Lagemeldung typischerweise?", optionen:["Freier Erzähltext ohne Struktur","Strukturiert nach festem Schema (Wer – Wo – Was – Wann – Womit)","Nur Zahlenangaben ohne Erklärungen","Immer schriftlich per Formblatt"], richtig:1, erklaerung:"Lagemeldungen folgen einem strukturierten Schema: Wer meldet, von wo, was ist die Lage, was ist getan, was wird benötigt. Struktur sichert vollständige und schnelle Information.", schwierigkeit:"mittel" },
+    { frage:"Wie oft sollte die Lagekarte im Einsatz aktualisiert werden?", optionen:["Einmal zu Beginn reicht aus","Nur bei Katastrophen","Laufend – bei jeder neuen Information oder Lageänderung","Alle 6 Stunden nach festem Rhythmus"], richtig:2, erklaerung:"Die Lagekarte ist ein dynamisches Dokument und muss laufend aktualisiert werden. Jede neue Information oder Lageänderung ist zeitnah einzutragen.", schwierigkeit:"leicht" },
+    { frage:"Welche Bedeutung haben Farben auf der Lagekarte?", optionen:["Farben haben keine festgelegte Bedeutung","Blau = eigene Kräfte, Rot = Schadensbereich, Grün = Abschnittsgrenzen","Rot = Feuerwehr, Blau = Polizei, Grün = DRK","Farben sind frei wählbar"], richtig:1, erklaerung:"Farbkonventionen: Blau für eigene Kräfte/Maßnahmen, Rot für Schadensbereich und Gefahrenstellen, Grün für Abschnittsgrenzen. Dies ermöglicht schnelle visuelle Orientierung.", schwierigkeit:"schwer" },
+    { frage:"Wie wird ein Behandlungsplatz auf der Lagekarte eingezeichnet?", optionen:["Roter Kreis","Blaues Dreieck","Taktisches Zeichen nach DV 102 (Rechteck mit BHP-Symbol)","Schwarzes Kreuz"], richtig:2, erklaerung:"Der Behandlungsplatz wird nach DV 102 mit dem genormten taktischen Zeichen eingetragen — ein Rechteck mit BHP-Symbol und ggf. Nummernangabe.", schwierigkeit:"mittel" },
+  ],
+  manv: [
+    { frage:"Wann liegt ein MANV vor?", optionen:["Ab genau 5 Verletzten","Wenn die Patientenzahl die regulären Rettungsdienstkapazitäten übersteigt","Ab 50 Verletzten per Gesetz","Nur bei Verkehrsunfällen mit mehr als 10 Fahrzeugen"], richtig:1, erklaerung:"Ein MANV liegt vor, wenn die Patientenzahl die verfügbaren Rettungsdienstkapazitäten übersteigt. Nicht die Zahl ist entscheidend, sondern die Relation zu den Ressourcen.", schwierigkeit:"leicht" },
+    { frage:"Welche Farbe hat Sichtungskategorie I?", optionen:["Gelb","Grün","Schwarz","Rot"], richtig:3, erklaerung:"SK I = Rot = akut lebensbedrohlich, sofortige Behandlung erforderlich. SK II = Gelb (dringlich), SK III = Grün (leicht verletzt), SK IV = Schwarz (verstorben/hoffnungslos).", schwierigkeit:"leicht" },
+    { frage:"Was bedeutet SK IV (Sichtungskategorie 4)?", optionen:["Leicht verletzt, gehfähig","Dringend behandlungsbedürftig","Verstorben oder ohne realistische Überlebenschance","Unklar, Nachsichtung erforderlich"], richtig:2, erklaerung:"SK IV (Schwarz): verstorben oder so schwer verletzt, dass keine Überlebenschance besteht. Zunächst nicht behandelt, um Ressourcen für rettbare Patienten zu schonen.", schwierigkeit:"leicht" },
+    { frage:"Wie viele Patienten kann ein BHP 25 gleichzeitig behandeln?", optionen:["10","25","50","100"], richtig:1, erklaerung:"Ein BHP 25 ist für die simultane Behandlung von 25 Patienten ausgelegt. In BW sind i.d.R. zwei Einsatzeinheiten für den Aufbau vorgesehen.", schwierigkeit:"mittel" },
+    { frage:"Welche Sofortmaßnahme hat beim MANV absolute Priorität?", optionen:["Sofortige Behandlung aller Verletzten gleichzeitig","Strukturierte Sichtung (Triage) aller Patienten zur Priorisierung","Transport aller Patienten ins nächste Krankenhaus","Warten auf Verstärkungskräfte"], richtig:1, erklaerung:"Beim MANV hat die strukturierte Sichtung (Triage) absolute Priorität. Ohne Kategorisierung können begrenzte Ressourcen nicht sinnvoll eingesetzt werden.", schwierigkeit:"mittel" },
+    { frage:"Was ist das START-Schema bei der MANV-Sichtung?", optionen:["Ein Kommunikationsprotokoll für den Funk","Ein einfaches Sichtungsschema (Gehen – Atmung – Puls) zur schnellen Erstklassifizierung","Ein Behandlungsprotokoll für Intensivpatienten","Ein Schema für die Anforderung von Verstärkungskräften"], richtig:1, erklaerung:"START (Simple Triage And Rapid Treatment): Kann der Patient gehen? → Atmung? → Atemfrequenz? → Puls? So können Erst-Kategorien in Sekunden vergeben werden.", schwierigkeit:"mittel" },
+    { frage:"Wer darf eine Sichtung (Triage) beim MANV durchführen?", optionen:["Nur der Leitende Notarzt (LNA)","Nur approbierte Ärzte","Auch ausgebildetes Rettungsdienstpersonal nach Weisung des LNA","Nur Notfallsanitäter mit Zusatzausbildung"], richtig:2, erklaerung:"Die Sichtung kann nach Weisung des LNA auch durch ausgebildetes Rettungsdienstpersonal (z.B. Notfallsanitäter) durchgeführt werden.", schwierigkeit:"schwer" },
+    { frage:"Welche Komponente des Behandlungsplatzes ist für SK-I-Patienten zuständig?", optionen:["Patientenablage","Behandlungsbereich Rot (Intensivbehandlung)","Transportzone","Betreuungsbereich"], richtig:1, erklaerung:"SK-I-Patienten (Rot) werden im Behandlungsbereich Rot versorgt, der für sofortige, intensive medizinische Maßnahmen ausgestattet ist.", schwierigkeit:"mittel" },
+  ],
+  recht: [
+    { frage:"Welches Gesetz regelt den Katastrophenschutz in Baden-Württemberg?", optionen:["Bundeskatastrophenschutzgesetz","Feuerwehrgesetz BW","Landeskatastrophenschutzgesetz BW (LKatSG)","Zivilschutz- und Katastrophenhilfegesetz (ZSKG)"], richtig:2, erklaerung:"Der KatS in BW ist im LKatSG BW geregelt. Es definiert Aufgaben, Zuständigkeiten und Strukturen der Katastrophenschutzorganisationen.", schwierigkeit:"leicht" },
+    { frage:"Wie viele Grundsätze hat das Rote Kreuz?", optionen:["5","7","9","12"], richtig:1, erklaerung:"Das Rote Kreuz hat 7 Grundsätze: Menschlichkeit, Unparteilichkeit, Neutralität, Unabhängigkeit, Freiwilligkeit, Einheit und Universalität (verkündet 1965 in Wien).", schwierigkeit:"leicht" },
+    { frage:"Wem ist der Zugführer einer DRK-Einsatzeinheit im Einsatz unterstellt?", optionen:["Direkt dem Landrat","Der übergeordneten Technischen Einsatzleitung (TEL)","Dem DRK-Kreisvorstand","Ausschließlich dem Leitenden Notarzt (LNA)"], richtig:1, erklaerung:"Im Einsatz ist der Zugführer der TEL oder Gesamteinsatzleitung unterstellt. Der LNA hat lediglich medizinische Weisungsbefugnis.", schwierigkeit:"mittel" },
+    { frage:"Was bedeutet 'Amtshilfe' im Katastrophenschutz?", optionen:["Hilfe durch Privatpersonen bei Katastrophen","Unterstützung einer Behörde durch eine andere auf Ersuchen","Internationale Katastrophenhilfe des DRK","Finanzielle Unterstützung für betroffene Behörden"], richtig:1, erklaerung:"Amtshilfe: Eine Behörde leistet einer anderen auf Ersuchen Unterstützung, wenn diese ihre Aufgaben nicht allein erfüllen kann (z.B. Bundeswehr, THW).", schwierigkeit:"schwer" },
+    { frage:"Welcher Grundsatz besagt, dass das DRK weder Partei ergreift noch an Feindseligkeiten teilnimmt?", optionen:["Menschlichkeit","Unparteilichkeit","Neutralität","Unabhängigkeit"], richtig:2, erklaerung:"Neutralität: Das Rote Kreuz ergreift in keinem bewaffneten Konflikt Partei und beteiligt sich nicht an politischen, rassischen oder religiösen Kontroversen.", schwierigkeit:"mittel" },
+    { frage:"Wer ist im KatS BW die übergeordnete Behörde?", optionen:["Das Bundesinnenministerium","Das Innenministerium BW über das Landratsamt (untere KatS-Behörde)","Der DRK Landesverband","Die Feuerwehr Leitstelle"], richtig:1, erklaerung:"Im KatS BW sind Landratsämter als untere Katastrophenschutzbehörden zuständig. Das Innenministerium BW ist die oberste Behörde.", schwierigkeit:"mittel" },
+    { frage:"Was ist das Prinzip der 'Einheitlichkeit' der Rotkreuzgrundsätze?", optionen:["Alle Mitglieder tragen dieselbe Uniform","In jedem Land kann es nur eine nationale Rotkreuz-/Rothalbmond-Gesellschaft geben","Alle Einsätze müssen nach einheitlichen Standards durchgeführt werden","Alle Mitglieder erhalten dieselbe Ausbildung"], richtig:1, erklaerung:"Einheitlichkeit: In jedem Land kann es nur eine nationale Rotkreuz- oder Rothalbmond-Gesellschaft geben, die allen offen steht.", schwierigkeit:"schwer" },
+    { frage:"Wann endet die Unterstellung der DRK-Kräfte unter die staatliche Einsatzleitung?", optionen:["Nach 24 Stunden automatisch","Wenn der DRK-Kreisverband dies beschließt","Mit der offiziellen Beendigung des Einsatzes durch die zuständige Behörde","Wenn alle Patienten versorgt sind"], richtig:2, erklaerung:"Die Unterstellung endet mit der offiziellen Beendigung des Einsatzes durch die zuständige Katastrophenschutzbehörde.", schwierigkeit:"mittel" },
+  ],
+  funk: [
+    { frage:"Wie lautet 'A' im ICAO-Phonetikalphabet (Digitalfunk TETRA)?", optionen:["Anton","Alpha","Alfa","Amsel"], richtig:2, erklaerung:"Im internationalen ICAO-Alphabet lautet A = Alfa. Im deutschen Analogfunk galt 'Anton'. Im Digitalfunk-TETRA wird das internationale ICAO-Alphabet verwendet.", schwierigkeit:"leicht" },
+    { frage:"Was bedeutet 'Kommen' im BOS-Sprechfunk?", optionen:["Ich beende das Gespräch endgültig","Ich bitte die Gegenstelle zu sprechen (Übergabewort)","Ich fahre jetzt zum Einsatzort","Dringende Durchsage folgt – bitte Funkstille"], richtig:1, erklaerung:"'Kommen' ist das Übergabewort (entspricht 'Over') — die Gegenstelle soll nun sprechen. 'Ende' beendet das Gespräch endgültig.", schwierigkeit:"leicht" },
+    { frage:"Welches Digitalfunksystem nutzen die deutschen BOS?", optionen:["GSM-R (Bahn-Funk)","TETRA (Terrestrial Trunked Radio)","DMR (Digital Mobile Radio)","P25 (Project 25)"], richtig:1, erklaerung:"Die deutschen BOS nutzen TETRA (380–400 MHz). Es bietet verschlüsselte Kommunikation, Gruppenrufe und Direktbetrieb ohne Infrastruktur.", schwierigkeit:"leicht" },
+    { frage:"Was ist nach dem Drücken der PTT-Taste zu beachten?", optionen:["Sofort sprechen, um Zeit zu sparen","Kurz warten (ca. 1 Sek.), dann deutlich und in normalem Tempo sprechen","Immer den Dienstgrad zuerst nennen","Zuerst dreimal den Empfänger nennen"], richtig:1, erklaerung:"Nach PTT kurz warten (ca. 1 Sek.), damit das System aufbaut. Dann deutlich und nicht zu schnell sprechen — so wird der Beginn vollständig übertragen.", schwierigkeit:"leicht" },
+    { frage:"Wie lautet der Buchstabe 'S' im ICAO-Phonetikalphabet?", optionen:["Samuel","Siegfried","Sierra","Sara"], richtig:2, erklaerung:"Im ICAO-Phonetikalphabet: S = Sierra. Weitere Beispiele: B = Bravo, C = Charlie, D = Delta, F = Foxtrot, G = Golf, H = Hotel, N = November.", schwierigkeit:"mittel" },
+    { frage:"Was ist der 'Direktbetrieb' (DMO) im TETRA-Digitalfunk?", optionen:["Direktverbindung zur Leitstelle ohne Umweg","Funkbetrieb zwischen Endgeräten ohne Nutzung der Netzinfrastruktur","Priorisierter Funkkanal für Führungskräfte","Verschlüsselter Direktanruf zwischen zwei Geräten"], richtig:1, erklaerung:"Im DMO (Direct Mode Operation) kommunizieren TETRA-Endgeräte direkt ohne Basisstationen. Wichtig bei fehlender Netzabdeckung oder Netzausfall.", schwierigkeit:"mittel" },
+    { frage:"Wie beginnt eine korrekte Funkmeldung im BOS-Sprechfunk?", optionen:["Mit der eigenen Rufnummer, dann Empfänger","Mit dem Empfänger, dann eigene Rufnummer, dann 'Kommen'","Mit dem Einsatzstichwort, dann Ort, dann Einheit","Mit 'Notfall' oder 'Mayday' bei dringenden Lagen"], richtig:1, erklaerung:"Korrekte Funkmeldung: 1. Empfänger nennen, 2. eigene Rufnummer, 3. 'Kommen'. Z.B.: 'Florian Muster 1/83, hier Florian Muster 7/19, Kommen.'", schwierigkeit:"mittel" },
+    { frage:"Welche Aussage zur Funkdisziplin ist korrekt?", optionen:["Privatgespräche sind auf dem Einsatzkanal erlaubt","Bei dringenden Meldungen darf man dazwischenfunken","Nur einsatzrelevante Informationen auf dem Einsatzkanal, keine Privatgespräche","Der Kanal darf immer belegt werden, damit man erreichbar ist"], richtig:2, erklaerung:"Strenge Funkdisziplin: nur einsatzrelevante Informationen auf dem Einsatzkanal. In laufende Meldungen darf nur bei echten Notfällen eingegriffen werden.", schwierigkeit:"leicht" },
+  ],
+  sanitaet: [
+    { frage:"Welche Dienstvorschrift regelt den Sanitätsdienst der DRK-Einsatzeinheit?", optionen:["DV 100","DV 102","DV 400","DV 600"], richtig:2, erklaerung:"Die DRK-DV 400 regelt den Sanitätsdienst der Einsatzeinheit: Gliederung, Aufgaben, Ausrüstung und Führung der Sanitätsgruppe.", schwierigkeit:"leicht" },
+    { frage:"Wer hat im Einsatz die medizinische Weisungsbefugnis?", optionen:["Der Zugführer","Der Gruppenführer Sanität","Der Leitende Notarzt (LNA)","Der Kreisbereitschaftsleiter"], richtig:2, erklaerung:"Der LNA hat die medizinische Weisungsbefugnis gegenüber allen Einsatzkräften — unabhängig von Führungsebene. Der Zugführer bleibt taktisch weisungsbefugt.", schwierigkeit:"mittel" },
+    { frage:"Was ist die primäre Aufgabe des Zugführers beim Aufbau eines Behandlungsplatzes?", optionen:["Selbst Patienten behandeln","Führung und Koordination der SEGs sowie Lagemeldung nach oben","Materialausgabe und Lagerhaltung","Patientendokumentation übernehmen"], richtig:1, erklaerung:"Der Zugführer führt abgesetzt — er behandelt nicht selbst. Er koordiniert die SEGs, gibt Befehle, überwacht den Einsatz und meldet der übergeordneten Führungsstelle.", schwierigkeit:"mittel" },
+    { frage:"Welche Funktion hat der Zugarzt in der DRK-Einsatzeinheit?", optionen:["Er führt den Zug taktisch","Er ist in medizinischer Hinsicht gegenüber Führungskräften und Helfern weisungsbefugt","Er koordiniert die SEG-Transporte","Er ist nur für administrative Aufgaben zuständig"], richtig:1, erklaerung:"Der Zugarzt ist gemäß DV 400 in medizinischer Hinsicht weisungsbefugt. Die taktische Führung des Zuges obliegt dem Zugführer.", schwierigkeit:"mittel" },
+    { frage:"Was ist die Aufgabe des OrgL (Organisatorischer Leiter Rettungsdienst)?", optionen:["Medizinische Behandlung der Patienten","Taktisch-organisatorische Leitung des Rettungsdienstgeschehens","Führung des Behandlungsplatzes","Koordination der Feuerwehrkräfte"], richtig:1, erklaerung:"Der OrgL übernimmt die taktisch-organisatorische Leitung beim MANV. Er arbeitet eng mit dem LNA zusammen und bildet mit ihm die Einsatzleitung Rettungsdienst.", schwierigkeit:"mittel" },
+    { frage:"Wofür steht die Abkürzung 'LNA'?", optionen:["Leitstellennachrichtenassistent","Leitender Notarzt","Logistiknotfallarzt","Leitstellen-Nachforderungsassistent"], richtig:1, erklaerung:"LNA = Leitender Notarzt. Er übernimmt beim MANV die medizinische Gesamtleitung und hat Weisungsbefugnis gegenüber allen Versorgungskräften.", schwierigkeit:"leicht" },
+    { frage:"Welche Kapazität hat ein KTW-B?", optionen:["Transport von 1 liegenden Patienten + Begleitung","Transport von 2 liegenden oder mehreren sitzenden Patienten","Nur Sitzendtransport, keine liegenden Patienten","Intensivtransport mit Monitorüberwachung"], richtig:1, erklaerung:"Ein KTW-B kann i.d.R. 2 liegende oder mehrere sitzende Patienten transportieren. Er ist mit qualifiziertem Sanitätspersonal besetzt und Kernfahrzeug der SEG-Transport.", schwierigkeit:"schwer" },
+    { frage:"Was ist bei der Übergabe eines Patienten an den Rettungsdienst zu beachten?", optionen:["Nur die Personalien des Patienten mitteilen","Strukturierte Übergabe: Zustand, Maßnahmen, Medikamente, Vitalparameter","Der aufnehmende Rettungsdienst übernimmt ohne Übergabe","Nur schriftliche Übergabe per Protokoll"], richtig:1, erklaerung:"Die strukturierte Patientenübergabe enthält: Vitalparameter, Diagnose/Verdacht, durchgeführte Maßnahmen inkl. Medikamente und besondere Vorkommnisse.", schwierigkeit:"mittel" },
+  ],
+};
+
+// ══════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════
+let state = {
+  screen: "home",   // "home" | "quiz" | "stats"
+  activeModule: null,
+  xp: 0,
+  streak: 0,
+  moduleStats: {},       // { moduleId: { total, correct } }
+  sessionCorrect: 0,
+  sessionWrong: 0,
+  // quiz state
+  question: null,
+  selected: null,
+  answered: false,
+  usedIdx: [],
+  xpGained: null,
+};
+
+function loadSaved() {
+  try {
+    const r = localStorage.getItem(STORAGE_KEY);
+    if (r) {
+      const s = JSON.parse(r);
+      state.xp = s.xp || 0;
+      state.streak = s.streak || 0;
+      state.moduleStats = s.moduleStats || {};
+    }
+  } catch(e) {}
+}
+
+function saveSaved() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      xp: state.xp,
+      streak: state.streak,
+      moduleStats: state.moduleStats,
+    }));
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════
+function calcLevel(xp) { return Math.floor(Math.sqrt(xp / 50)) + 1; }
+function xpForNext(level) { return level * level * 50; }
+function xpGainFn(ok, diff) {
+  if (!ok) return 0;
+  return diff === "schwer" ? 30 : diff === "mittel" ? 20 : 10;
+}
+
+function getLocalQuestion(moduleId, usedIdx) {
+  const bank = QB[moduleId] || QB.fuehrungsvorgang;
+  const avail = bank.map((_, i) => i).filter(i => !usedIdx.includes(i));
+  const pool = avail.length > 0 ? avail : bank.map((_, i) => i);
+  const idx = pool[Math.floor(Math.random() * pool.length)];
+  return { q: bank[idx], idx };
+}
+
+function overallPct() {
+  const vals = Object.values(state.moduleStats);
+  const t = vals.reduce((s, m) => s + (m.total || 0), 0);
+  const c = vals.reduce((s, m) => s + (m.correct || 0), 0);
+  return t > 0 ? Math.round((c / t) * 100) : 0;
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════════
+function el(tag, attrs, ...children) {
+  const e = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") e.className = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (k === "style" && typeof v === "object") Object.assign(e.style, v);
+      else if (k === "disabled") { if (v) e.disabled = true; }
+      else e.setAttribute(k, v);
+    }
+  }
+  for (const child of children.flat()) {
+    if (child == null || child === false) continue;
+    e.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+  }
+  return e;
+}
+
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+  if (state.screen === "home") app.appendChild(renderHome());
+  else if (state.screen === "quiz") app.appendChild(renderQuiz());
+  else if (state.screen === "stats") app.appendChild(renderStats());
+}
+
+// ── HOME ──────────────────────────────────────────────────────
+function renderHome() {
+  const level = calcLevel(state.xp);
+  const prev = (level - 1) ** 2 * 50;
+  const next = xpForNext(level);
+  const pct = Math.min(100, ((state.xp - prev) / (next - prev)) * 100);
+  const op = overallPct();
+
+  const streakBadge = state.streak >= 2
+    ? el("div", { class: "streak-badge", style: { background: state.streak >= 5 ? "#C0392B" : "#B45309" } },
+        "🔥 " + state.streak + "er")
+    : null;
+
+  const header = el("div", { class: "card" },
+    el("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "16px" } },
+      el("div", {},
+        el("div", { class: "font-bc", style: { fontWeight: 900, fontSize: "30px", color: "#1A1A1A", lineHeight: 1 } },
+          "DRK ", el("span", { style: { color: "#C0392B" } }, "ZUGFÜHRER")),
+        el("div", { class: "font-mono", style: { fontSize: "11px", color: "#7A7A7A", marginTop: "4px" } },
+          "LERNAPP · DRK-LANDESSCHULE BW · PFALZGRAFENWEILER")),
+      el("div", { style: { display: "flex", gap: "8px", alignItems: "center" } },
+        streakBadge,
+        el("button", { class: "btn-stats", onClick: () => { state.screen = "stats"; render(); } }, "📊 Statistik"))),
+    el("div", { id: "xp-bar-wrap" },
+      el("div", { id: "xp-level" }, "Lv " + level),
+      el("div", { id: "xp-track" },
+        el("div", { id: "xp-fill", style: { width: pct + "%" } })),
+      el("div", { id: "xp-label" }, state.xp + " XP")),
+    op > 0
+      ? el("div", { class: "overall-pct font-mono", style: { color: op >= 80 ? "#1D6A45" : "#7A7A7A" } },
+          "🎯 Prüfungsziel 80% — aktuell: ", el("strong", {}, op + "%"),
+          op >= 80 ? el("span", { style: { color: "#1D6A45", fontWeight: 700 } }, " ✅ Erreicht!") : null)
+      : null
+  );
+
+  const daily = el("div", { class: "daily-box" },
+    el("div", { class: "daily-icon" }, "⏱️"),
+    el("div", {},
+      el("div", { class: "daily-title" }, "TÄGLICHE LERNEINHEIT"),
+      el("div", { class: "daily-sub" }, "Wähle ein Modul und meistere 5 Fragen — reicht für heute!")));
+
+  const label = el("div", { class: "section-label" }, "MODULE — 64 FRAGEN · 8 THEMENGEBIETE");
+
+  const grid = el("div", { id: "module-grid" });
+  for (const mod of MODULES) {
+    grid.appendChild(renderModCard(mod));
+  }
+
+  const footer = el("div", { class: "footer" },
+    "DV 100 · DV 102 · DV 400 · KatS-Gesetz BW · DRK-Landesschule Pfalzgrafenweiler 2025");
+
+  return el("div", { class: "screen center" }, header, daily, label, grid, footer);
+}
+
+function renderModCard(mod) {
+  const ms = state.moduleStats[mod.id] || {};
+  const total = ms.total || 0, correct = ms.correct || 0;
+  const pct = total > 0 ? Math.round((correct / total) * 100) : null;
+  const mastered = pct !== null && pct >= 80;
+  const barColor = pct >= 80 ? "#1D6A45" : pct >= 60 ? "#B45309" : "#C0392B";
+
+  const card = el("button", {
+    class: "mod-card",
+    onClick: () => startModule(mod),
+    onMouseover: () => { card.style.borderColor = mod.accent; },
+    onMouseout: () => { card.style.borderColor = mastered ? mod.accent : "#E0D9D0"; },
+    style: { borderColor: mastered ? mod.accent : "#E0D9D0" }
+  },
+    mastered ? el("div", { class: "mod-badge" }, "✓ Gemeistert") : null,
+    el("div", { class: "mod-icon" }, mod.icon),
+    el("div", { class: "mod-title" }, mod.title),
+    el("div", { class: "mod-sub" }, mod.subtitle),
+    pct !== null
+      ? el("div", {},
+          el("div", { class: "mod-progress-row" },
+            el("span", { style: { color: "#7A7A7A" } }, correct + "/" + total + " richtig"),
+            el("span", { style: { color: barColor, fontWeight: 700 } }, pct + "%")),
+          el("div", { class: "mod-bar-track" },
+            el("div", { class: "mod-bar-fill", style: { width: pct + "%", background: barColor } })))
+      : el("div", { class: "mod-empty" }, "Noch nicht gestartet")
+  );
+  return card;
+}
+
+function startModule(mod) {
+  state.activeModule = mod;
+  state.sessionCorrect = 0;
+  state.sessionWrong = 0;
+  state.usedIdx = [];
+  state.screen = "quiz";
+  loadNextQuestion();
+  render();
+}
+
+// ── QUIZ ──────────────────────────────────────────────────────
+function loadNextQuestion() {
+  const { q, idx } = getLocalQuestion(state.activeModule.id, state.usedIdx);
+  state.question = q;
+  if (idx >= 0) state.usedIdx.push(idx);
+  state.selected = null;
+  state.answered = false;
+  state.xpGained = null;
+}
+
+function renderQuiz() {
+  const mod = state.activeModule;
+  const q = state.question;
+
+  const diffMap = {
+    leicht: { label: "Leicht", bg: "#E8F5EE", col: "#1D6A45" },
+    mittel: { label: "Mittel", bg: "#FEF3C7", col: "#B45309" },
+    schwer: { label: "Schwer", bg: "#FDECEA", col: "#C0392B" },
+  };
+  const d = diffMap[q.schwierigkeit] || diffMap.leicht;
+
+  const header = el("div", { class: "quiz-header" },
+    el("button", { class: "btn-back", onClick: () => { state.screen = "home"; render(); } }, "← Zurück"),
+    el("div", { class: "quiz-title" }, mod.icon + " " + mod.title),
+    el("div", { class: "quiz-score" },
+      el("span", { class: "score-ok" }, "✓ " + state.sessionCorrect),
+      el("span", { class: "score-err" }, "✗ " + state.sessionWrong)));
+
+  const diffBadge = el("div", {},
+    el("span", { class: "diff-badge", style: { background: d.bg, color: d.col } }, d.label));
+
+  const qCard = el("div", { class: "q-card", style: { borderColor: mod.accent } },
+    el("div", { class: "q-text" }, q.frage));
+
+  const optionsWrap = el("div", { class: "options" });
+  q.optionen.forEach((opt, i) => {
+    const isSel = state.selected === i;
+    const isCorrect = q.richtig === i;
+
+    let bg = "#FFFFFF", borderCol = "#E0D9D0", textCol = "#4A4A4A", lblBg = "#F9F7F4", lblCol = "#7A7A7A";
+    if (state.answered) {
+      if (isCorrect) { bg = "#E8F5EE"; borderCol = "#1D6A45"; textCol = "#1D6A45"; lblBg = "#1D6A45"; lblCol = "#fff"; }
+      else if (isSel) { bg = "#FDECEA"; borderCol = "#C0392B"; textCol = "#C0392B"; lblBg = "#C0392B"; lblCol = "#fff"; }
+    } else if (isSel) {
+      bg = "#EBF2FB"; borderCol = "#1E4D8C"; textCol = "#1E4D8C"; lblBg = "#1E4D8C"; lblCol = "#fff";
+    }
+
+    const labelText = state.answered && isCorrect ? "✓"
+      : state.answered && isSel && !isCorrect ? "✗"
+      : String.fromCharCode(65 + i);
+
+    const btn = el("button", {
+      class: "opt-btn",
+      style: { background: bg, borderColor: borderCol, color: textCol, cursor: state.answered ? "default" : "pointer" },
+      onClick: () => {
+        if (state.answered) return;
+        state.selected = i;
+        render();
+      }
+    },
+      el("span", { class: "opt-label", style: { background: lblBg, color: lblCol, borderColor: borderCol } }, labelText),
+      el("span", { style: { flex: 1 } }, opt));
+    optionsWrap.appendChild(btn);
+  });
+
+  let actionArea;
+  if (!state.answered) {
+    const canSubmit = state.selected !== null;
+    actionArea = el("button", {
+      class: "btn-submit",
+      style: {
+        background: canSubmit ? mod.accent : "#E0D9D0",
+        color: canSubmit ? "#fff" : "#7A7A7A",
+        cursor: canSubmit ? "pointer" : "not-allowed",
+        boxShadow: canSubmit ? "0 2px 8px rgba(0,0,0,.15)" : "none",
+      },
+      disabled: !canSubmit,
+      onClick: () => {
+        if (state.selected === null) return;
+        const ok = q.richtig === state.selected;
+        const gained = xpGainFn(ok, q.schwierigkeit);
+        state.answered = true;
+        state.xpGained = gained;
+        state.xp += gained;
+        state.streak = ok ? state.streak + 1 : 0;
+        if (ok) state.sessionCorrect++; else state.sessionWrong++;
+        const ms = state.moduleStats[mod.id] || { total: 0, correct: 0 };
+        state.moduleStats[mod.id] = { total: ms.total + 1, correct: ms.correct + (ok ? 1 : 0) };
+        saveSaved();
+        render();
+      }
+    }, "ANTWORT PRÜFEN");
+  } else {
+    const xpPop = state.xpGained > 0
+      ? el("div", { class: "xp-pop" }, "+" + state.xpGained + " XP ⚡")
+      : null;
+    const explain = el("div", { class: "card-alt" },
+      el("div", { class: "explain-label" }, "💡 ERKLÄRUNG"),
+      el("div", { class: "explain-text" }, q.erklaerung));
+    const nextBtn = el("button", {
+      class: "btn-next",
+      style: { background: mod.accent },
+      onClick: () => { loadNextQuestion(); render(); }
+    }, "NÄCHSTE FRAGE →");
+    actionArea = el("div", {}, xpPop, explain, nextBtn);
+  }
+
+  return el("div", { class: "screen center-sm" }, header, diffBadge, qCard, optionsWrap, actionArea);
+}
+
+// ── STATS ─────────────────────────────────────────────────────
+function renderStats() {
+  const vals = Object.values(state.moduleStats);
+  const totalQ = vals.reduce((s, m) => s + (m.total || 0), 0);
+  const totalC = vals.reduce((s, m) => s + (m.correct || 0), 0);
+  const pct = totalQ > 0 ? Math.round((totalC / totalQ) * 100) : 0;
+
+  const header = el("div", { class: "stats-header" },
+    el("button", { class: "btn-back", onClick: () => { state.screen = "home"; render(); } }, "← Zurück"),
+    el("div", { class: "stats-title font-bc" }, "Lernstatistik"));
+
+  const statGrid = el("div", { class: "stat-grid" });
+  [
+    { label: "Fragen gesamt", val: totalQ, icon: "📊", bg: "#EBF2FB", col: "#1E4D8C" },
+    { label: "Trefferquote", val: pct + "%", icon: "🎯", bg: pct >= 80 ? "#E8F5EE" : "#FEF3C7", col: pct >= 80 ? "#1D6A45" : "#B45309" },
+    { label: "Aktuelle Serie", val: state.streak, icon: "🔥", bg: state.streak >= 5 ? "#FDECEA" : "#F9F7F4", col: state.streak >= 5 ? "#C0392B" : "#4A4A4A" },
+  ].forEach(s => {
+    statGrid.appendChild(el("div", { class: "stat-box", style: { background: s.bg } },
+      el("div", { class: "stat-icon" }, s.icon),
+      el("div", { class: "stat-val font-bc", style: { color: s.col } }, String(s.val)),
+      el("div", { class: "stat-lbl font-mono" }, s.label)));
+  });
+
+  const modLabel = el("div", { class: "section-label", style: { marginTop: "8px" } }, "FORTSCHRITT PRO MODUL");
+  const modRows = el("div", {});
+  for (const m of MODULES) {
+    const ms = state.moduleStats[m.id] || {};
+    const p = ms.total > 0 ? Math.round((ms.correct / ms.total) * 100) : 0;
+    const bc = p >= 80 ? "#1D6A45" : p >= 60 ? "#B45309" : "#C0392B";
+    modRows.appendChild(el("div", { class: "mod-stat-row" },
+      el("div", { class: "mod-stat-top" },
+        el("span", { class: "mod-stat-name font-bc" }, m.icon + " " + m.title),
+        el("span", { class: "mod-stat-pct font-mono", style: { color: ms.total > 0 ? bc : "#7A7A7A" } },
+          ms.total > 0 ? ms.correct + "/" + ms.total + " · " + p + "%" : "—")),
+      el("div", { class: "mod-stat-bar" },
+        el("div", { class: "mod-stat-fill", style: { width: p + "%", background: bc } }))));
+  }
+
+  const goalColor = pct >= 80 ? "#1D6A45" : "#C0392B";
+  const goalBg = pct >= 80 ? "#E8F5EE" : "#FDECEA";
+  const goalBorder = pct >= 80 ? "#1D6A45" : "#E8C5C0";
+  const goal = el("div", { class: "card-goal", style: { background: goalBg, border: "1px solid " + goalBorder, marginTop: "16px" } },
+    el("div", { class: "goal-label font-mono" }, "🎯 PRÜFUNGSZIEL: 80%"),
+    el("div", { class: "goal-text font-bc", style: { color: goalColor } },
+      pct >= 80 ? "✅ Ziel erreicht! Weiter so!" : "Noch " + (80 - pct) + " Prozentpunkte bis zum Ziel."));
+
+  return el("div", { class: "screen center-md" }, header, statGrid, modLabel, modRows, goal);
+}
+
+// ══════════════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════════════
+loadSaved();
+render();
+</script>
+</body>
+</html>
