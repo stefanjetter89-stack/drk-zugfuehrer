@@ -1,6 +1,5 @@
 DRK Zugführer Lernapp
-Interaktive Lernapp für den Zugführer-Lehrgang der DRK-Landesschule Baden-Württemberg (Pfalzgrafenweiler).
-Öffnen
+Interaktive Lernapp für den Zugführer-Lehrgang des DRK. Keine offizielle Version und nur als Übungsprojekt für KI-Nutzung.
 Die Datei drk-zugfuehrer-lernapp.html im Browser öffnen – keine Installation nötig.
 Inhalt
 
@@ -9,5 +8,4 @@ Inhalt
 Runden à 5 Fragen mit Abschlussbewertung
 XP-System und Fortschrittsspeicherung
 
-Grundlagen
-DV 100 · DV 102 · DV 400 · KatS-Gesetz BW · Lehrplan DRK-Landesschule BW 2025
+Grundlagen über KI erstellt.
